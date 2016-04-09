@@ -1,0 +1,22 @@
+{
+  "name": "bamap",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marianboda/bamap.git"
+  },
+  "author": "Marian Boda",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/marianboda/bamap/issues"
+  },
+  "homepage": "https://github.com/marianboda/bamap#readme",
+  "dependencies": {
+    "node-fetch": "^1.5.0"
+  }
+}
