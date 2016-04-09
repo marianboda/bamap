@@ -6,7 +6,7 @@ var app = koa()
 var simplify = require("simplify-js")
 
 var CSS_COLOR_NAMES = ["AliceBlue","AntiqueWhite","Aqua","Aquamarine","Azure","Beige","Bisque","Black","BlanchedAlmond","Blue","BlueViolet","Brown","BurlyWood","CadetBlue","Chartreuse","Chocolate","Coral","CornflowerBlue","Cornsilk","Crimson","Cyan","DarkBlue","DarkCyan","DarkGoldenRod","DarkGray","DarkGrey","DarkGreen","DarkKhaki","DarkMagenta","DarkOliveGreen","Darkorange","DarkOrchid","DarkRed","DarkSalmon","DarkSeaGreen","DarkSlateBlue","DarkSlateGray","DarkSlateGrey","DarkTurquoise","DarkViolet","DeepPink","DeepSkyBlue","DimGray","DimGrey","DodgerBlue","FireBrick","FloralWhite","ForestGreen","Fuchsia","Gainsboro","GhostWhite","Gold","GoldenRod","Gray","Grey","Green","GreenYellow","HoneyDew","HotPink","IndianRed","Indigo","Ivory","Khaki","Lavender","LavenderBlush","LawnGreen","LemonChiffon","LightBlue","LightCoral","LightCyan","LightGoldenRodYellow","LightGray","LightGrey","LightGreen","LightPink","LightSalmon","LightSeaGreen","LightSkyBlue","LightSlateGray","LightSlateGrey","LightSteelBlue","LightYellow","Lime","LimeGreen","Linen","Magenta","Maroon","MediumAquaMarine","MediumBlue","MediumOrchid","MediumPurple","MediumSeaGreen","MediumSlateBlue","MediumSpringGreen","MediumTurquoise","MediumVioletRed","MidnightBlue","MintCream","MistyRose","Moccasin","NavajoWhite","Navy","OldLace","Olive","OliveDrab","Orange","OrangeRed","Orchid","PaleGoldenRod","PaleGreen","PaleTurquoise","PaleVioletRed","PapayaWhip","PeachPuff","Peru","Pink","Plum","PowderBlue","Purple","Red","RosyBrown","RoyalBlue","SaddleBrown","Salmon","SandyBrown","SeaGreen","SeaShell","Sienna","Silver","SkyBlue","SlateBlue","SlateGray","SlateGrey","Snow","SpringGreen","SteelBlue","Tan","Teal","Thistle","Tomato","Turquoise","Violet","Wheat","White","WhiteSmoke","Yellow","YellowGreen"]
-var query = '(rel(1702499);>);out;'
+var query = '(rel(14296);>);out;'
 
 function getData(){
   return fetch("http://overpass-api.de/api/interpreter?data=[out:json];" + query)
@@ -31,7 +31,6 @@ app.use(function *(next){
 
 app.use(function *(){
   let json = yield getData()
-  console.log(Object.keys(json))
   let elements = json.elements
   console.log (`${elements.length} elements`)
   let nodes = elements.filter( i => i.type == "node" )
@@ -81,13 +80,14 @@ app.use(function *(){
 
   let coordPoints = areaPoints.map(i => { return {x: nodeIdx[i][0], y: nodeIdx[i][1]}})
   let simplified = simplify(coordPoints, 0.0005, true)
+  console.log(simplified.length)
   var ratio = Math.abs(Math.cos(48))
-  var factor = 0.5
+  var factor = 4
   var scale = [factor, factor * ratio]
-  var viewBox = [16.9, 47.9, scale[0], scale[1]]
+  var viewBox = [16.9, 49.3, scale[0], scale[1]]
 
   this.body = `<svg width="100%" height="100%" viewBox="${viewBox.join(' ')}" preserveAspectRatio="none">`
-    + '<g transform="scale(1,-1) translate(0,-96.2)">'
+    + '<g transform="scale(1,-1) translate(0,' + (-viewBox[1] * 2.0)  + ')">'
     + '<path fill="orange" stroke="black" stroke-width="0.001" d="' + pathData(simplified) + 'Z"/>'
     + '</g>'
     + '</svg>'
