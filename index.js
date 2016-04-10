@@ -86,10 +86,10 @@ app.use(function *(){
   var scale = [factor, factor * ratio]
   var viewBox = [16.9, 49.3, scale[0], scale[1]]
 
-  this.body = `<svg width="100%" height="100%" viewBox="${viewBox.join(' ')}" preserveAspectRatio="none">`
+  this.body = `<div style="float: left; overflow: hidden; border: 1px solid #ccc;"><svg width="500" height="500" viewBox="${viewBox.join(' ')}" preserveAspectRatio="none">`
     + '<g transform="scale(1,-1) translate(0,' + (-viewBox[1] * 2.0)  + ')">'
     + '<path fill="orange" stroke="black" stroke-width="0.001" d="' + pathData(simplified) + 'Z"/>'
     + '</g>'
-    + '</svg>'
+    + '</svg></div>'
 })
 app.listen(3000)
