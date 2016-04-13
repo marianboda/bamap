@@ -28,11 +28,15 @@ const pathData = (m) => {
 }
 
 app.use(function *(){
+  console.log(this.request.url)
+  if (this.request.url == '/favicon.ico') {
+    return
+  }
   let data = yield getData()
-  this.body = `<div style="float: left; overflow: hidden; border: 1px solid #ccc;"><svg width="500" height="500" viewBox="${data.viewBox.join(' ')}" preserveAspectRatio="none">`
-    + '<g transform="scale(1,-1) translate(0,' + (-data.viewBox[1] * 2.0)  + ')">'
-    + '<path fill="orange" stroke="black" stroke-width="0.001" d="' + pathData(data.cities[0]) + 'Z"/>'
-    + '</g>'
+  this.body = `<div style="float: left; overflow: hidden; border: 1px solid #ccc;"><svg width="800" height="800" viewBox="${data.viewBox.join(' ')}">`
+    // + '<g transform="scale(1,-1) translate(0,' + (-data.viewBox[1] * 2.0)  + ')">'
+    + '<path fill="orange" stroke="black" stroke-width="0.001" d="' + pathData(data.cities[0].boundaries) + 'Z"/>'
+    // + '</g>'
     + '</svg></div>'
 })
 app.listen(3000)

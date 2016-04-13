@@ -3,6 +3,13 @@ var _ = require("lodash")
 var fetch = require("node-fetch")
 var simplify = require("simplify-js")
 
+const latlonToKm = (latlon) => {
+  return [
+    (90 - latlon[0]) * 110.574 - 4465,
+    latlon[1] * (111.320 * Math.cos(48 * Math.PI / 180)) - 1253,
+  ]
+}
+
 var query = '(rel(14296);>);out;'
 
 function fetchFromApi(){
@@ -21,7 +28,7 @@ function *getData(){
   let rels = elements.filter( i => i.type == "relation")
 
   let nodeIdx = nodes.reduce((acc, el) => {
-    acc[el.id] = [el.lon, el.lat]
+    acc[el.id] = latlonToKm([el.lat, el.lon])
     return acc
   }, {})
   let wayIdx = ways.reduce((acc, el) => {
@@ -55,19 +62,33 @@ function *getData(){
   let areaPoints = areaWays.map((i) => wayIdx[i].nodes)
     .reduce(connect,[])
 
-  let coordPoints = areaPoints.map(i => { return {x: nodeIdx[i][0], y: nodeIdx[i][1]}})
-  let simplified = simplify(coordPoints, 0.0005, true)
+  let coordPoints = areaPoints.map(i => { return {x: nodeIdx[i][1], y: nodeIdx[i][0]}})
+
+  const minmax = coordPoints.reduce((acc, el) => {
+    return {
+      x: Math.max(acc.x, el.x),
+      y: Math.max(acc.y, el.y),
+    }
+  },{x:0, y:0})
+
+  console.log('minmax', minmax)
+
+  let simplified = simplify(coordPoints, 0.5, true)
   console.log(simplified.length)
   var ratio = Math.abs(Math.cos(48))
   var factor = 4
   var scale = [factor, factor * ratio]
-  var viewBox = [16.9, 49.3, scale[0], scale[1]]
+  var viewBox = [0, 0, 428, 209]
 
   return {
+    json: json,
     viewBox: viewBox,
     cities: [
-      simplified
-    ]
+      {
+        name: 'Namee',
+        boundaries: simplified,
+      }
+    ],
   }
 }
 
