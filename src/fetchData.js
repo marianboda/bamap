@@ -10,7 +10,7 @@ const latlonToKm = (latlon) => {
   ]
 }
 
-var query = '(rel(14296);>);out;'
+var query = '(rel(1702499);>);out;'
 
 function fetchFromApi(){
   return fetch("http://overpass-api.de/api/interpreter?data=[out:json];" + query)
