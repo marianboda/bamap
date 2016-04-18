@@ -53,6 +53,7 @@ let roadQ = encodeURIComponent(
 let roadsFilename = './roads.json'
 
 function getRoads(){
+  console.log('getting roads')
   let d = Promise.defer()
   fs.readFile(roadsFilename, (err, data) => {
     if (err) {
@@ -93,9 +94,7 @@ function responseToSettlements(res){
   })
 }
 
-function responseToRoads(res){
-  let nodes = res.elements.filter( i => i.type == "node" )
-  let ways = res.elements.filter( i => i.type == "way" )
+function transformWays(ways, nodes){
   let waysByEnds = ways.reduce((acc, el) => {
     let start = el.nodes[0]
     let end = el.nodes[el.nodes.length-1]
@@ -177,6 +176,35 @@ function responseToRoads(res){
   return allWaysCoord
 }
 
+function responseToRoads(res){
+  let nodes = res.elements.filter( i => i.type == "node" )
+  let ways = res.elements.filter( i => i.type == "way" )
+
+  let waysByType = ways.reduce((acc, el) => {
+    let type = el.tags.highway
+    if (el.tags.highway == 'trunk'
+        || el.tags.highway == 'motorway_link'
+        || el.tags.highway == 'trunk_link')
+      type = 'motorway'
+    if (el.tags.highway == 'primary_link')
+      type = 'primary'
+    if (el.tags.highway == 'secondary_link')
+      type = 'secondary'
+    acc[type].push(el)
+    return acc
+  }, {motorway: [], primary: [], secondary: []})
+
+  console.log('----')
+
+  let roads = {
+    motorway: transformWays(waysByType.motorway, nodes),
+    primary: transformWays(waysByType.primary, nodes),
+    secondary: transformWays(waysByType.secondary, nodes),
+  }
+  return roads
+
+}
+
 let scrapeSettlements = () => {
   let d = Promise.defer()
   fetchFromApi(q).then((res) => {
@@ -203,16 +231,27 @@ let scrape = (query, type, mapF) => {
 //   console.log('settlements done :)')
 // }).catch(console.error)
 
+console.log('whats up')
+
 getRoads().then( data => {
-  console.log(data.elements.length)
+  // console.log(data.elements.length)
   let roads = responseToRoads(data)
-  insert('road', roads.map(i => {
-    return {
-      points: JSON.stringify(i),
-      svg_path: '',
-      type: '',
-    }
-  })).then(res => {
+  let roadTypes = Object.keys(roads)
+  // console.log(roadTypes)
+
+  let transformedRoadsByType = _.mapValues(roads, (i, k) => {
+    // console.log(' - - - ', i, k)
+    return i.map( r => {
+      // console.log(JSON.stringify(r), k)
+      return {
+        points: JSON.stringify(r),
+        svg_path: '',
+        type: k
+      }
+  })})
+  let transformedRoads = _.reduce(transformedRoadsByType, (acc, el) => { return _.concat(acc, el) }, [])
+
+  insert('road', transformedRoads).then(res => {
     knex.destroy()
   })
 

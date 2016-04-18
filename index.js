@@ -31,7 +31,7 @@ function getData(){
       let simplified = simplify(points, 0.1, true)
       allpoints += points.length
       simplifiedPoints += simplified.length
-      return {points: simplified}
+      return {points: simplified, type: i.type}
     })
     console.log(allpoints + ' -> ' + simplifiedPoints)
     db.all('SELECT * FROM settlement', (err, data) => {
@@ -54,7 +54,16 @@ router.get('/', function *(next){
   let data = yield getData()
 
   console.log(data.roads[0])
-  data.viewBox = [0, 0, 440, 220],
+
+  let roads = {
+    primary: data.roads.filter(i => i.type == "primary"),
+    secondary: data.roads.filter(i => i.type == "secondary"),
+    motorway: data.roads.filter(i => i.type == "motorway"),
+  }
+
+  console.log(roads.motorway.length)
+
+  data.viewBox = [10, 135, 45, 45]
 
   this.body = `<div style="float: left; overflow: hidden; border: 1px solid #ccc;">`
     + `<svg width="800" height="800" viewBox="${data.viewBox.join(' ')}">`
@@ -69,8 +78,28 @@ router.get('/', function *(next){
     + '<g clip-path="url(#borderline)"><image x="-48" y="-26" width="523" height="258" xlink:href="relief.jpg" preserveAspectRatio="none"></image></g>'
     + `<g><path stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="black" stroke-width="1" d="${country.border}"></path></g>`
     + '<g>'
-      + data.roads.map(i => {
-          return '<path stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="' + "#333333" + '" stroke-width="0.4" d="' + pathData(i.points) + '"/>'
+      + roads.secondary.map(i => {
+          return '<path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="' + "#333333" + '" stroke-width="2" d="' + pathData(i.points) + '"/>'
+        }).join()
+    + '</g>'
+    + '<g>'
+      + roads.primary.map(i => {
+          return '<path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="' + "#66FF88" + '" stroke-width="4" d="' + pathData(i.points) + '"/>'
+        }).join()
+    + '</g>'
+    + '<g>'
+      + roads.primary.map(i => {
+          return '<path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="' + "#333333" + '" stroke-width="2" d="' + pathData(i.points) + '"/>'
+        }).join()
+    + '</g>'
+    + '<g>'
+      + roads.motorway.map(i => {
+          return '<path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="' + "#FF8800" + '" stroke-width="5" d="' + pathData(i.points) + '"/>'
+        }).join()
+    + '</g>'
+    + '<g>'
+      + roads.motorway.map(i => {
+          return '<path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="' + "#333333" + '" stroke-width="3" d="' + pathData(i.points) + '"/>'
         }).join()
     + '</g>'
     + '<g>'
@@ -81,7 +110,16 @@ router.get('/', function *(next){
             case "town": color = "#002255"; break;
           }
           let coords = utils.latlonToKm([i.lat, i.lon])
-          return `<circle r="${0.2 + Math.min(i.population/15000, 2)}"`
+          return `<circle r="${0.2 + Math.min(i.population/20000, 1.3)}"`
+            + ` fill="${color}" class="${i.place}" `
+            + `cx="${coords.x}" cy="${coords.y}" />`
+        }).join()
+    + '</g>'
+    + '<g>'
+      + data.settlements.map(i => {
+          let color = "#6699FF"
+          let coords = utils.latlonToKm([i.lat, i.lon])
+          return `<circle r="${0.2 + Math.min(i.population/20000, 1.3) - 0.1}"`
             + ` fill="${color}" class="${i.place}" `
             + `cx="${coords.x}" cy="${coords.y}" />`
         }).join()
