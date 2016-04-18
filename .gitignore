@@ -1,1 +1,5 @@
 node_modules/
+roads.json
+ba_kraj.json
+map.db
+getRaster.js

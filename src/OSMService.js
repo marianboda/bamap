@@ -27,7 +27,8 @@ function fetchSettlements(){
     + '(node(area.a)[place="town"];'
       + 'node(area.a)[place="village"];'
       + 'node(area.a)[place="suburb"];'
-      + 'way(area.a)[highway=motorway];>);'
+      + 'way(area.a)[highway=motorway];>;'
+      + 'way(area.a)[highway=trunk];>);'
       + 'out;')
 
   // let q = encodeURIComponent('area[name="Bratislavský kraj"];(rel(area)["admin_level"="10"];>);out;')
@@ -98,7 +99,7 @@ function transformResponse(res){
     return acc
   }, {})
 
-  let roads = ways.filter(i => i.tags.highway === 'motorway')
+  let roads = ways.filter(i => i.tags.highway === 'motorway' || i.tags.highway === 'trunk')
     .map(i => { return {points: paths[i.id]}})
 
   // let settlements = rels.map((i) => {
@@ -118,7 +119,7 @@ function transformResponse(res){
 
   return {
     json: res,
-    viewBox: [0, 0, 420, 210],
+    viewBox: [0, 0, 440, 220],
     // viewBox: [0, 120, 60, 60],
     // cities: settlements,
     villages: villages,

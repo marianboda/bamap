@@ -4,8 +4,10 @@ var serve = require('koa-static')
 var router = require('koa-router')()
 var _ = require("lodash")
 var app = koa()
-
-var getData = require("./src/fetchData")
+var sqlite = require("sqlite3")
+var db = new sqlite.Database('./map.db')
+var utils = require("./utilities")
+var simplify = require("simplify-js")
 
 var CSS_COLOR_NAMES = ["AliceBlue","AntiqueWhite","Aqua","Aquamarine","Azure","Beige","Bisque","Black","BlanchedAlmond","Blue","BlueViolet","Brown","BurlyWood","CadetBlue","Chartreuse","Chocolate","Coral","CornflowerBlue","Cornsilk","Crimson","Cyan","DarkBlue","DarkCyan","DarkGoldenRod","DarkGray","DarkGrey","DarkGreen","DarkKhaki","DarkMagenta","DarkOliveGreen","Darkorange","DarkOrchid","DarkRed","DarkSalmon","DarkSeaGreen","DarkSlateBlue","DarkSlateGray","DarkSlateGrey","DarkTurquoise","DarkViolet","DeepPink","DeepSkyBlue","DimGray","DimGrey","DodgerBlue","FireBrick","FloralWhite","ForestGreen","Fuchsia","Gainsboro","GhostWhite","Gold","GoldenRod","Gray","Grey","Green","GreenYellow","HoneyDew","HotPink","IndianRed","Indigo","Ivory","Khaki","Lavender","LavenderBlush","LawnGreen","LemonChiffon","LightBlue","LightCoral","LightCyan","LightGoldenRodYellow","LightGray","LightGrey","LightGreen","LightPink","LightSalmon","LightSeaGreen","LightSkyBlue","LightSlateGray","LightSlateGrey","LightSteelBlue","LightYellow","Lime","LimeGreen","Linen","Magenta","Maroon","MediumAquaMarine","MediumBlue","MediumOrchid","MediumPurple","MediumSeaGreen","MediumSlateBlue","MediumSpringGreen","MediumTurquoise","MediumVioletRed","MidnightBlue","MintCream","MistyRose","Moccasin","NavajoWhite","Navy","OldLace","Olive","OliveDrab","Orange","OrangeRed","Orchid","PaleGoldenRod","PaleGreen","PaleTurquoise","PaleVioletRed","PapayaWhip","PeachPuff","Peru","Pink","Plum","PowderBlue","Purple","Red","RosyBrown","RoyalBlue","SaddleBrown","Salmon","SandyBrown","SeaGreen","SeaShell","Sienna","Silver","SkyBlue","SlateBlue","SlateGray","SlateGrey","Snow","SpringGreen","SteelBlue","Tan","Teal","Thistle","Tomato","Turquoise","Violet","Wheat","White","WhiteSmoke","Yellow","YellowGreen"]
 
@@ -13,8 +15,33 @@ app.use(serve(__dirname + '/static'))
 
 const pathData = (m) => {
   return m.reduce((acc, el) => {
+    // if (el === undefined) return acc
     return acc + (acc == "M" ? '' : 'L') + el.x + ' ' + el.y
   }, 'M')
+}
+
+function getData(){
+  let d = Promise.defer()
+
+  db.all('SELECT * FROM road', (err, data) => {
+    let allpoints = 0
+    let simplifiedPoints = 0
+    let roads = data.map(i => {
+      let points = _.map(JSON.parse(i.points), utils.latlonToKm)
+      let simplified = simplify(points, 0.1, true)
+      allpoints += points.length
+      simplifiedPoints += simplified.length
+      return {points: simplified}
+    })
+    console.log(allpoints + ' -> ' + simplifiedPoints)
+    db.all('SELECT * FROM settlement', (err, data) => {
+      if (err) console.log(err)
+      let settlements = data
+      d.resolve({settlements, roads})
+    })
+  })
+
+  return d.promise
 }
 
 router.get('/', function *(next){
@@ -23,44 +50,53 @@ router.get('/', function *(next){
 
   var get = require("./src/OSMService")
   var country = require('./slovakia')
-  var data = yield get(14296)
 
-  this.body = `<div style="float: left; overflow: hidden; border: 1px solid #ccc;"><svg width="800" height="800" viewBox="${data.viewBox.join(' ')}">`
-    // + '<g>'
-    // + data.cities.map(i => {
-    //     return '<path fill="orange" stroke="black" stroke-width="0.1" d="' + pathData(i.border) + 'Z"/>'
-    //   }).join()
-    // + '</g>'
-    + '<g><image x="-48" y="-26" width="523" height="258" xlink:href="relief.png" preserveAspectRatio="none"></image></g>'
-    + country.border
+  let data = yield getData()
+
+  console.log(data.roads[0])
+  data.viewBox = [0, 0, 440, 220],
+
+  this.body = `<div style="float: left; overflow: hidden; border: 1px solid #ccc;">`
+    + `<svg width="800" height="800" viewBox="${data.viewBox.join(' ')}">`
+    + '<defs>'
+      + '<clipPath id="borderline">'
+        + `<path fill="black" stroke="none" d="${country.border}"></path>`
+      + '</clipPath>'
+      + '<clipPath id="cut-off-bottom">'
+        + '<rect x="0" y="0" width="200" height="100" />'
+      + '</clipPath>'
+    + '</defs>'
+    + '<g clip-path="url(#borderline)"><image x="-48" y="-26" width="523" height="258" xlink:href="relief.jpg" preserveAspectRatio="none"></image></g>'
+    + `<g><path stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="black" stroke-width="1" d="${country.border}"></path></g>`
     + '<g>'
-    + data.villages.map(i => {
-        let color = '#555555'
-        switch (i.place) {
-          case "suburb": color = "#FF6600"; break;
-          case "town": color = CSS_COLOR_NAMES[2]; break;
-        }
-        return `<circle r="${0.2 + Math.min(i.population/15000, 2)}"`
-          + ` fill="${color}" class="${i.place}" `
-          + `cx="${i.coords.x}" cy="${i.coords.y}" />`
-      }).join()
+      + data.roads.map(i => {
+          return '<path stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="' + "#333333" + '" stroke-width="0.4" d="' + pathData(i.points) + '"/>'
+        }).join()
     + '</g>'
     + '<g>'
-    + data.roads.map(i => {
-        return '<path fill="none" stroke="black" stroke-width="0.1" d="' + pathData(i.points) + '"/>'
-      }).join()
+      + data.settlements.map(i => {
+          let color = '#222222'
+          switch (i.place) {
+            case "suburb": color = "#FF6600"; break;
+            case "town": color = "#002255"; break;
+          }
+          let coords = utils.latlonToKm([i.lat, i.lon])
+          return `<circle r="${0.2 + Math.min(i.population/15000, 2)}"`
+            + ` fill="${color}" class="${i.place}" `
+            + `cx="${coords.x}" cy="${coords.y}" />`
+        }).join()
     + '</g>'
     + '</svg></div>'
     + '<br><table>'
-    + data.villages.sort((a,b) => {
-        return 0 - (a.population - b.population)
-      }).map((i,idx) => {
-        return '<tr>'
-          + `<td>${idx+1}</td>`
-          + `<td>${i.name}</td>`
-          + `<td>${i.population}</td>`
-      }).join('')
-    + '</table>'
+      + data.settlements.sort((a,b) => {
+          return 0 - (a.population - b.population)
+        }).map((i,idx) => {
+          return '<tr>'
+            + `<td>${idx+1}</td>`
+            + `<td>${i.name}</td>`
+            + `<td>${i.population}</td>`
+        }).join('')
+      + '</table>'
 })
 app.use(router.routes())
   .use(router.allowedMethods())
